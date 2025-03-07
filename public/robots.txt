@@ -1,0 +1,8 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Disallow: /404  # Disallow the error page
+
+# Allow crawling of main sections
+Allow: /$  # Allow the main page
+
+Sitemap: https://www.vardges-terminal.vercel.app/sitemap.xml
