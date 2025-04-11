@@ -161,7 +161,7 @@ const TerminalComponent: React.FC = () => {
         terminal.writeln("\r\nOpening resume...");
         setTimeout(() => {
           window.open(
-            "https://vardges-movsesyan.vercel.app/assets/Vardges%20Movsesyan%20CV%20AM-D8VyztFq.pdf",
+            "https://vardges-movsesyan.vercel.app/assets/Vardges%20Movsesyan%20CV%20AM-Eek6tv_4.pdf",
             "_blank"
           );
         }, 1000);
@@ -213,3 +213,9 @@ const TerminalComponent: React.FC = () => {
 };
 
 export default TerminalComponent;
+
+// This code is a React component that implements a terminal-like interface using the xterm.js library. It allows users to interact with the terminal by typing commands and receiving responses. The terminal supports command history, autocompletion, and various commands like "help", "about", "projects", "contact", "whoami", "joke", and more. The component also includes a fit addon to adjust the terminal size based on the container dimensions.
+
+
+// Եղած ինֆորմացիայի վրա ստեղծի դինամիկ ռեզյումե ըստ տրված հրամանի (for example get resume for React, Node, etc...)
+// Ռեզյումե գեներացնող ծրագիր
