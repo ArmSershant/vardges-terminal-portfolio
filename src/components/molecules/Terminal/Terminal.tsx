@@ -38,11 +38,6 @@ const TerminalComponent: React.FC = () => {
     terminal.loadAddon(fitAddon);
     terminal.open(terminalRef.current);
     fitAddon.fit();
-    // terminal.resize(terminal.cols, terminal.rows - 1);
-
-    terminal.writeln(
-      "Welcome to Vardges's Terminal based Portfolio! Type 'help' for commands.\r\nClean code always looks like it was written by someone who cares."
-    );
     newLine(terminal, fitAddon);
 
     terminal.registerLinkProvider({
@@ -160,6 +155,15 @@ const TerminalComponent: React.FC = () => {
 
   return (
     <>
+      <div>
+        <p className={styles.terminalDescription}>
+          Welcome to my terminal-based portfolio! Type <code>help</code> to see
+          available commands.
+        </p>
+        <p className={styles.terminalDescription}>
+          Clean code always looks like it was written by someone who cares.{" "}
+        </p>
+      </div>
       <div className={styles.terminal} ref={terminalRef} />
       <div className={styles.terminalShortcuts}>
         <p>

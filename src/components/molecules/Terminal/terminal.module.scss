@@ -16,7 +16,7 @@
         width: 100%;
         height: 100%;
     }
-    
+
     .xterm-screen {
         width: 100% !important;
         height: 100% !important;
@@ -33,11 +33,19 @@
     }
 }
 
-.terminalShortcuts {
-    margin-top: 1rem;
+.terminalShortcuts,
+.terminalDescription {
     color: #0f0;
     font-family: monospace;
     font-size: 0.875rem;
     text-align: center;
     opacity: 0.8;
+}
+
+.terminalShortcuts {
+    margin-top: 1rem;
+}
+
+.terminalDescription {
+    margin-bottom: 1rem;
 }
