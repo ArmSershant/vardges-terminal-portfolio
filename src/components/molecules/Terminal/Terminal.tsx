@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
@@ -10,8 +11,11 @@ const TerminalComponent: React.FC = () => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<Terminal | null>(null);
 
-  const prompt = (terminal: Terminal) => {
+  const newLine = (terminal: Terminal, fitAddon: FitAddon) => {
     terminal.write("\r\n$ ");
+    fitAddon.fit();
+    terminal.scrollToBottom();
+    terminal.resize(terminal.cols, terminal.rows - 1);
   };
 
   useEffect(() => {
@@ -19,65 +23,134 @@ const TerminalComponent: React.FC = () => {
 
     const terminal = new Terminal({
       cursorBlink: true,
-      theme: { background: "#000", foreground: "#00FF00" },
+      cursorStyle: "underline",
+      fontFamily: "Courier New, monospace",
+      fontSize: 14,
+      lineHeight: 1.4,
+      theme: {
+        background: "#000000",
+        foreground: "#00FF00",
+        cursor: "#00FF00",
+      },
     });
+
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
     terminal.open(terminalRef.current);
     fitAddon.fit();
+    // terminal.resize(terminal.cols, terminal.rows - 1);
 
     terminal.writeln(
       "Welcome to Vardges's Terminal based Portfolio! Type 'help' for commands.\r\nClean code always looks like it was written by someone who cares."
     );
-    prompt(terminal);
+    newLine(terminal, fitAddon);
+
+    terminal.registerLinkProvider({
+      provideLinks(y, callback) {
+        const regex = /(https?:\/\/[^\s]+)/g;
+        const links = [];
+        const line = terminal.buffer.active.getLine(y - 1)?.translateToString();
+        if (line) {
+          let match;
+          while ((match = regex.exec(line))) {
+            const startIndex = match.index;
+            const length = match[0].length;
+            const url = match[0];
+            links.push({
+              text: url,
+              range: {
+                start: { x: startIndex + 1, y },
+                end: { x: startIndex + length + 1, y },
+              },
+              activate: () => window.open(url, "_blank"),
+            });
+          }
+        }
+        callback(links);
+      },
+    });
 
     let commandBuffer = "";
     const commandHistory: string[] = [];
     let historyIndex = -1;
 
     terminal.onKey(({ key, domEvent }) => {
+      if (domEvent.ctrlKey && domEvent.key === "c") {
+        domEvent.preventDefault();
+        terminal.write("^C");
+        commandBuffer = "";
+        historyIndex = commandHistory.length;
+        newLine(terminal, fitAddon);
+        return;
+      }
+
+      if (domEvent.ctrlKey && domEvent.key === "l") {
+        domEvent.preventDefault();
+        terminal.clear();
+        commandBuffer = "";
+        historyIndex = commandHistory.length;
+        return;
+      }
+
+      if (domEvent.key === "Escape") {
+        domEvent.preventDefault();
+        commandBuffer = "";
+        historyIndex = commandHistory.length;
+        newLine(terminal, fitAddon);
+        return;
+      }
+
       if (domEvent.key === "Enter") {
-        terminal.writeln("");
-        handleCommand(terminal, commandBuffer.trim());
-        commandHistory.push(commandBuffer.trim());
+        const processedCommand = commandBuffer.trim().toLowerCase();
+        handleCommand(terminal, processedCommand);
+        commandHistory.push(processedCommand);
         historyIndex = commandHistory.length;
         commandBuffer = "";
-        prompt(terminal);
+        newLine(terminal, fitAddon);
       } else if (domEvent.key === "Backspace") {
         if (commandBuffer.length > 0) {
           terminal.write("\b \b");
           commandBuffer = commandBuffer.slice(0, -1);
         }
       } else if (domEvent.key === "ArrowUp") {
+        domEvent.preventDefault();
         if (historyIndex > 0) {
           historyIndex--;
-          commandBuffer = commandHistory[historyIndex];
-          terminal.write(`\r$ ${commandBuffer}`);
+          const newCommand = commandHistory[historyIndex];
+          terminal.write(`\r\x1b[K$ ${newCommand}`);
+          commandBuffer = newCommand;
         }
       } else if (domEvent.key === "ArrowDown") {
+        domEvent.preventDefault();
         if (historyIndex < commandHistory.length - 1) {
           historyIndex++;
-          commandBuffer = commandHistory[historyIndex];
-          terminal.write(`\r$ ${commandBuffer}`);
+          const newCommand = commandHistory[historyIndex];
+          terminal.write(`\r\x1b[K$ ${newCommand}`);
+          commandBuffer = newCommand;
         } else {
           historyIndex = commandHistory.length;
           commandBuffer = "";
-          terminal.write("\r$ ");
+          terminal.write("\r\x1b[K$ ");
         }
       } else if (domEvent.key === "Tab") {
+        domEvent.preventDefault();
         const matchedCommands = commands.filter((command) =>
-          command.startsWith(commandBuffer)
+          command.startsWith(commandBuffer.toLowerCase())
         );
         if (matchedCommands.length === 1) {
-          commandBuffer = matchedCommands[0];
-          terminal.write(`\r$ ${commandBuffer}`);
+          const completion = matchedCommands[0];
+          const remainingText = completion.slice(commandBuffer.length);
+          commandBuffer = completion;
+          terminal.write(remainingText);
         } else if (matchedCommands.length > 1) {
-          terminal.write("\r\n" + matchedCommands.join("\r\n"));
+          terminal.write("\r\n" + matchedCommands.join("  "));
           terminal.write("\r\n$ " + commandBuffer);
         }
-      } else {
-        commandBuffer += key;
-        terminal.write(key);
+      } else if (!domEvent.ctrlKey && !domEvent.altKey && !domEvent.metaKey) {
+        if (key.length === 1) {
+          commandBuffer += key;
+          terminal.write(key);
+        }
       }
     });
 
@@ -85,9 +158,17 @@ const TerminalComponent: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commands, term]);
 
-  return <div className={styles.terminal} ref={terminalRef} />;
+  return (
+    <>
+      <div className={styles.terminal} ref={terminalRef} />
+      <div className={styles.terminalShortcuts}>
+        <p>
+          <strong>Shortcuts:</strong> Ctrl + C: Cancel | Ctrl + L: Clear | Esc:
+          Reset | ↑ / ↓: History | Tab: Auto-complete
+        </p>
+      </div>
+    </>
+  );
 };
 
 export default TerminalComponent;
-
-// This code is a React component that implements a terminal-like interface using the xterm.js library. It allows users to interact with the terminal by typing commands and receiving responses. The terminal supports command history, autocompletion, and various commands like "help", "about", "projects", "contact", "whoami", "joke", and more. The component also includes a fit addon to adjust the terminal size based on the container dimensions.
