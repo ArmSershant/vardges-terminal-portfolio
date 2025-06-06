@@ -11,6 +11,7 @@
     box-shadow: 0 0 20px #00ff0080;
     overflow: hidden;
     position: relative;
+    margin: auto;
 
     .xterm {
         width: 100%;
@@ -48,4 +49,42 @@
 
 .terminalDescription {
     margin-bottom: 1rem;
+}
+
+.mobileInput {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    height: 0;
+}
+
+@media (max-width: 768px) {
+    .terminal {
+        width: 95vw;
+        height: 70vh;
+        font-size: 0.75rem;
+        padding: 0.25rem;
+        border-width: 1px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px #00ff0040;
+    }
+
+    .terminalShortcuts,
+    .terminalDescription {
+        font-size: 0.75rem;
+        padding: 0 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .terminal {
+        height: 60vh;
+        font-size: 0.65rem;
+        padding: 0.2rem;
+    }
+
+    .terminalShortcuts,
+    .terminalDescription {
+        font-size: 0.625rem;
+    }
 }

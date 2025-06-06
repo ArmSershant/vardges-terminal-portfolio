@@ -9,6 +9,7 @@ import styles from "./terminal.module.scss";
 
 const TerminalComponent: React.FC = () => {
   const terminalRef = useRef<HTMLDivElement>(null);
+  const mobileInputRef = useRef<HTMLTextAreaElement>(null);
   const [term, setTerm] = useState<Terminal | null>(null);
 
   const newLine = (terminal: Terminal, fitAddon: FitAddon) => {
@@ -21,12 +22,15 @@ const TerminalComponent: React.FC = () => {
   useEffect(() => {
     if (!terminalRef.current || term) return;
 
+    const isMobile = window.innerWidth <= 480;
+    const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
+
     const terminal = new Terminal({
       cursorBlink: true,
       cursorStyle: "underline",
       fontFamily: "Courier New, monospace",
-      fontSize: 14,
-      lineHeight: 1.4,
+      fontSize: isMobile ? 10 : isTablet ? 12 : 14,
+      lineHeight: isMobile ? 1.2 : isTablet ? 1.3 : 1.4,
       theme: {
         background: "#000000",
         foreground: "#00FF00",
@@ -44,25 +48,85 @@ const TerminalComponent: React.FC = () => {
       provideLinks(y, callback) {
         const regex = /(https?:\/\/[^\s]+)/g;
         const links = [];
-        const line = terminal.buffer.active.getLine(y - 1)?.translateToString();
-        if (line) {
-          let match;
-          while ((match = regex.exec(line))) {
-            const startIndex = match.index;
-            const length = match[0].length;
-            const url = match[0];
-            links.push({
-              text: url,
-              range: {
-                start: { x: startIndex + 1, y },
-                end: { x: startIndex + length + 1, y },
-              },
-              activate: () => window.open(url, "_blank"),
-            });
-          }
+      
+        // Get the active buffer
+        const buffer = terminal.buffer.active;
+      
+        // Collect wrapped lines starting from line y-1 upwards
+        let startLineIndex = y - 1;
+        while (startLineIndex > 0 && buffer.getLine(startLineIndex)?.isWrapped) {
+          startLineIndex--;
         }
+      
+        // Collect wrapped lines downward starting from startLineIndex
+        let endLineIndex = startLineIndex;
+        while (
+          endLineIndex + 1 < buffer.length &&
+          buffer.getLine(endLineIndex + 1)?.isWrapped
+        ) {
+          endLineIndex++;
+        }
+      
+        // Concatenate all wrapped lines' text to a single string
+        let combinedText = "";
+        for (let i = startLineIndex; i <= endLineIndex; i++) {
+          combinedText += buffer.getLine(i)?.translateToString() || "";
+        }
+      
+        let match;
+        while ((match = regex.exec(combinedText))) {
+          const startPos = match.index;
+          const length = match[0].length;
+      
+          // Map startPos and length back to terminal coordinates (x,y)
+          let remaining = startPos;
+          let linkStartX = 0;
+          let linkStartY = 0;
+          let found = false;
+      
+          for (let lineIdx = startLineIndex; lineIdx <= endLineIndex; lineIdx++) {
+            const lineText = buffer.getLine(lineIdx)?.translateToString() || "";
+            if (remaining < lineText.length) {
+              linkStartX = remaining + 1;
+              linkStartY = lineIdx + 1;
+              found = true;
+              break;
+            }
+            remaining -= lineText.length;
+          }
+      
+          if (!found) continue;
+      
+          let remainingLength = length;
+          let linkEndX = linkStartX;
+          let linkEndY = linkStartY;
+      
+          for (let lineIdx = linkStartY - 1; lineIdx <= endLineIndex; lineIdx++) {
+            const lineText = buffer.getLine(lineIdx)?.translateToString() || "";
+            const lineRemaining = lineText.length - (lineIdx === linkStartY - 1 ? linkStartX - 1 : 0);
+            if (remainingLength <= lineRemaining) {
+              linkEndX = (lineIdx === linkStartY - 1 ? linkStartX - 1 : 0) + remainingLength;
+              linkEndY = lineIdx + 1;
+              break;
+            }
+            remainingLength -= lineRemaining;
+          }
+      
+          const url = match[0];
+          links.push({
+            text: url,
+            range: {
+              start: { x: linkStartX, y: linkStartY },
+              end: { x: linkEndX, y: linkEndY },
+            },
+            activate: () => window.open(url, "_blank"),
+          });
+          
+        }
+      
         callback(links);
       },
+      
     });
 
     let commandBuffer = "";
@@ -150,6 +214,20 @@ const TerminalComponent: React.FC = () => {
     });
 
     setTerm(terminal);
+
+    const mobileInput = mobileInputRef.current;
+    if (mobileInput) {
+      mobileInput.focus();
+      mobileInput.addEventListener("input", (e) => {
+        const value = (e.target as HTMLTextAreaElement).value;
+        if (value) {
+          terminal.write(value);
+          commandBuffer += value;
+          (e.target as HTMLTextAreaElement).value = "";
+        }
+      });
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commands, term]);
 
@@ -171,6 +249,7 @@ const TerminalComponent: React.FC = () => {
           Reset | ↑ / ↓: History | Tab: Auto-complete
         </p>
       </div>
+      <textarea id="mobileInput" ref={mobileInputRef} className={styles.mobileInput} />
     </>
   );
 };
