@@ -231,34 +231,42 @@ const TerminalComponent: React.FC = () => {
     const mobileInput = mobileInputRef.current;
     if (mobileInput) {
       mobileInput.focus();
-    
+
       mobileInput.addEventListener("keydown", (e) => {
-        e.preventDefault();
         const key = e.key;
-    
+
         if (key === "Backspace") {
+          e.preventDefault();
           if (commandBuffer.length > 0) {
             terminal.write("\b \b");
             commandBuffer = commandBuffer.slice(0, -1);
+            mobileInput.value = commandBuffer;
           }
         } else if (key === "Enter") {
+          e.preventDefault();
           const processedCommand = commandBuffer.trim().toLowerCase();
           handleCommand(terminal, processedCommand);
           commandHistory.push(processedCommand);
           historyIndex = commandHistory.length;
           commandBuffer = "";
+          mobileInput.value = "";
           newLine(terminal, fitAddon);
-        } else if (key.length === 1) {
-          commandBuffer += key;
-          terminal.write(key);
         }
       });
-    
+
+      mobileInput.addEventListener("input", (e) => {
+        const value = (e.target as HTMLTextAreaElement).value;
+        const addedChar = value.slice(commandBuffer.length);
+        if (addedChar.length > 0) {
+          commandBuffer += addedChar;
+          terminal.write(addedChar);
+        }
+      });
+
       terminalRef.current?.addEventListener("touchstart", () => {
         mobileInput.focus();
       });
     }
-    
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commands, term]);
@@ -267,8 +275,8 @@ const TerminalComponent: React.FC = () => {
     <>
       <div>
         <p className={styles.terminalDescription}>
-          Welcome to my terminal-based portfolio! Type <code>help</code> to see
-          available commands.
+          Welcome to my terminal-based portfolio! Type <code>"help"</code> to
+          see available commands.
         </p>
         <p className={styles.terminalDescription}>
           Clean code always looks like it was written by someone who cares.{" "}
@@ -277,8 +285,8 @@ const TerminalComponent: React.FC = () => {
       <div className={styles.terminal} ref={terminalRef} />
       <div className={styles.terminalShortcuts}>
         <p>
-          <strong>Shortcuts:</strong> Ctrl + C: Cancel | Ctrl + L: Clear | Esc:
-          Reset | ↑ / ↓: History | Tab: Auto-complete
+          Ctrl + C: Cancel | Ctrl + L: Clear | Esc: Reset | ↑ / ↓: History |
+          Tab: Auto-complete
         </p>
       </div>
       <textarea
