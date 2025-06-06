@@ -48,16 +48,19 @@ const TerminalComponent: React.FC = () => {
       provideLinks(y, callback) {
         const regex = /(https?:\/\/[^\s]+)/g;
         const links = [];
-      
+
         // Get the active buffer
         const buffer = terminal.buffer.active;
-      
+
         // Collect wrapped lines starting from line y-1 upwards
         let startLineIndex = y - 1;
-        while (startLineIndex > 0 && buffer.getLine(startLineIndex)?.isWrapped) {
+        while (
+          startLineIndex > 0 &&
+          buffer.getLine(startLineIndex)?.isWrapped
+        ) {
           startLineIndex--;
         }
-      
+
         // Collect wrapped lines downward starting from startLineIndex
         let endLineIndex = startLineIndex;
         while (
@@ -66,25 +69,29 @@ const TerminalComponent: React.FC = () => {
         ) {
           endLineIndex++;
         }
-      
+
         // Concatenate all wrapped lines' text to a single string
         let combinedText = "";
         for (let i = startLineIndex; i <= endLineIndex; i++) {
           combinedText += buffer.getLine(i)?.translateToString() || "";
         }
-      
+
         let match;
         while ((match = regex.exec(combinedText))) {
           const startPos = match.index;
           const length = match[0].length;
-      
+
           // Map startPos and length back to terminal coordinates (x,y)
           let remaining = startPos;
           let linkStartX = 0;
           let linkStartY = 0;
           let found = false;
-      
-          for (let lineIdx = startLineIndex; lineIdx <= endLineIndex; lineIdx++) {
+
+          for (
+            let lineIdx = startLineIndex;
+            lineIdx <= endLineIndex;
+            lineIdx++
+          ) {
             const lineText = buffer.getLine(lineIdx)?.translateToString() || "";
             if (remaining < lineText.length) {
               linkStartX = remaining + 1;
@@ -94,24 +101,32 @@ const TerminalComponent: React.FC = () => {
             }
             remaining -= lineText.length;
           }
-      
+
           if (!found) continue;
-      
+
           let remainingLength = length;
           let linkEndX = linkStartX;
           let linkEndY = linkStartY;
-      
-          for (let lineIdx = linkStartY - 1; lineIdx <= endLineIndex; lineIdx++) {
+
+          for (
+            let lineIdx = linkStartY - 1;
+            lineIdx <= endLineIndex;
+            lineIdx++
+          ) {
             const lineText = buffer.getLine(lineIdx)?.translateToString() || "";
-            const lineRemaining = lineText.length - (lineIdx === linkStartY - 1 ? linkStartX - 1 : 0);
+            const lineRemaining =
+              lineText.length -
+              (lineIdx === linkStartY - 1 ? linkStartX - 1 : 0);
             if (remainingLength <= lineRemaining) {
-              linkEndX = (lineIdx === linkStartY - 1 ? linkStartX - 1 : 0) + remainingLength;
+              linkEndX =
+                (lineIdx === linkStartY - 1 ? linkStartX - 1 : 0) +
+                remainingLength;
               linkEndY = lineIdx + 1;
               break;
             }
             remainingLength -= lineRemaining;
           }
-      
+
           const url = match[0];
           links.push({
             text: url,
@@ -121,12 +136,10 @@ const TerminalComponent: React.FC = () => {
             },
             activate: () => window.open(url, "_blank"),
           });
-          
         }
-      
+
         callback(links);
       },
-      
     });
 
     let commandBuffer = "";
@@ -218,15 +231,34 @@ const TerminalComponent: React.FC = () => {
     const mobileInput = mobileInputRef.current;
     if (mobileInput) {
       mobileInput.focus();
-      mobileInput.addEventListener("input", (e) => {
-        const value = (e.target as HTMLTextAreaElement).value;
-        if (value) {
-          terminal.write(value);
-          commandBuffer += value;
-          (e.target as HTMLTextAreaElement).value = "";
+    
+      mobileInput.addEventListener("keydown", (e) => {
+        e.preventDefault();
+        const key = e.key;
+    
+        if (key === "Backspace") {
+          if (commandBuffer.length > 0) {
+            terminal.write("\b \b");
+            commandBuffer = commandBuffer.slice(0, -1);
+          }
+        } else if (key === "Enter") {
+          const processedCommand = commandBuffer.trim().toLowerCase();
+          handleCommand(terminal, processedCommand);
+          commandHistory.push(processedCommand);
+          historyIndex = commandHistory.length;
+          commandBuffer = "";
+          newLine(terminal, fitAddon);
+        } else if (key.length === 1) {
+          commandBuffer += key;
+          terminal.write(key);
         }
       });
+    
+      terminalRef.current?.addEventListener("touchstart", () => {
+        mobileInput.focus();
+      });
     }
+    
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commands, term]);
@@ -249,7 +281,11 @@ const TerminalComponent: React.FC = () => {
           Reset | ↑ / ↓: History | Tab: Auto-complete
         </p>
       </div>
-      <textarea id="mobileInput" ref={mobileInputRef} className={styles.mobileInput} />
+      <textarea
+        id="mobileInput"
+        ref={mobileInputRef}
+        className={styles.mobileInput}
+      />
     </>
   );
 };
